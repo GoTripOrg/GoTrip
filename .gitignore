@@ -6,3 +6,8 @@ dev.db
 __pycache__/
 *.pyc
 .vscode/
+
+# Pruebas automáticas internas (el profesor no las ve)
+tests/
+.pytest_cache/
+evidencias_borrador/
