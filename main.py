@@ -10,6 +10,7 @@ load_dotenv()
 from fastapi import FastAPI  # noqa: E402
 
 from global_exception import GlobalException  # noqa: E402
+from api.tipo_documento_api import router as tipo_documento_router  # noqa: E402
 from api.usuario_api import router as usuario_router  # noqa: E402
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app = FastAPI(
 GlobalException.registrar(app)
 
 # Registrar los routers de cada entidad (los de las demás HU se agregan aquí al construirse)
+app.include_router(tipo_documento_router, prefix="/api/v1")
 app.include_router(usuario_router, prefix="/api/v1")
 
 
