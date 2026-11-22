@@ -115,8 +115,8 @@ class RespuestaRegistro(BaseModel):
 
 class Usuario:
     def __init__(self, id_usuario: int, nombres: str, apellidos: str, correo: str, id_tipo_documento: int,
-                 numero_documento: str, telefono: str, hash_contrasena: str, modo_uso: str,
-                 fecha_creacion: datetime, estado: str = "activo"):
+                 numero_documento: str, telefono: str, hash_contrasena: str, modo_uso: Optional[str],
+                 fecha_creacion: datetime, estado: str = "activo", roles_internos: Optional[list] = None):
         self.id_usuario = id_usuario
         self.nombres = nombres
         self.apellidos = apellidos
@@ -126,13 +126,17 @@ class Usuario:
         self.telefono = telefono
         self.hash_contrasena = hash_contrasena
         self.modo_uso = modo_uso
-        self.modos_habilitados = [modo_uso]
+        self.modos_habilitados = [modo_uso] if modo_uso else []
+        self.roles_internos = list(roles_internos or [])  # p. ej. "Gestor de soporte"; no son modos de uso
         self.estado = estado
         self.fecha_creacion = fecha_creacion
 
     def esta_activo(self) -> bool:
         """RN-02: solo una cuenta activa puede autenticarse."""
         return self.estado == "activo"
+
+    def tiene_rol_interno(self) -> bool:
+        return bool(self.roles_internos)
 
     def to_response(self) -> dict:
         return {"id_usuario": self.id_usuario, "nombres": self.nombres, "apellidos": self.apellidos,

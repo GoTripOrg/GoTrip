@@ -30,9 +30,10 @@ MSG_CONTENT_TYPE = "El tipo de contenido debe ser application/json"
 class ErrorNegocio(ValueError):
     codigo = 400
 
-    def __init__(self, mensaje: str):
+    def __init__(self, mensaje: str, cabeceras: Optional[dict] = None):
         super().__init__(mensaje)
         self.mensaje = mensaje
+        self.cabeceras = cabeceras
 
 
 class Invalido(ErrorNegocio):
@@ -65,6 +66,11 @@ class TipoContenido(ErrorNegocio):
     codigo = 415
 
 
+class DemasiadosIntentos(ErrorNegocio):
+    """Bloqueo temporal por intentos fallidos; se acompaña del encabezado Retry-After (429)."""
+    codigo = 429
+
+
 class NoDisponible(ErrorNegocio):
     """Falla de almacenamiento (503)."""
     codigo = 503
@@ -74,9 +80,10 @@ class NoDisponible(ErrorNegocio):
 class GlobalException:
 
     @staticmethod
-    def respuesta(mensaje: str, codigo: int) -> JSONResponse:
+    def respuesta(mensaje: str, codigo: int, cabeceras: Optional[dict] = None) -> JSONResponse:
         """Respuesta de error con el formato { mensaje, data, success }."""
-        return JSONResponse(status_code=codigo, content={"mensaje": mensaje, "data": None, "success": False})
+        return JSONResponse(status_code=codigo, content={"mensaje": mensaje, "data": None, "success": False},
+                            headers=cabeceras)
 
     # -- se usan en las rutas ---------------------------------------------------
     @staticmethod
@@ -135,7 +142,7 @@ class GlobalException:
     def registrar(cls, app: FastAPI) -> None:
         @app.exception_handler(ErrorNegocio)
         async def _negocio(_: Request, exc: ErrorNegocio):
-            return cls.respuesta(exc.mensaje, exc.codigo)
+            return cls.respuesta(exc.mensaje, exc.codigo, exc.cabeceras)
 
         @app.exception_handler(RequestValidationError)
         async def _validacion(request: Request, exc: RequestValidationError):
