@@ -25,9 +25,14 @@ def iso(valor: Optional[datetime]) -> Optional[str]:
     return None if valor is None else valor.replace(tzinfo=ZONA).isoformat()
 
 
+MAX_BYTES_CONTRASENA = 72  # límite de bcrypt para generar el hash
+
+
 def politica_contrasena(c: str) -> bool:
-    """Valor inicial propuesto: mínimo 8 caracteres, con mayúscula, minúscula y número."""
-    return len(c) >= 8 and any(x.isupper() for x in c) and any(x.islower() for x in c) and any(x.isdigit() for x in c)
+    """Valor inicial propuesto: mínimo 8 caracteres, con mayúscula, minúscula y número,
+    y como máximo 72 bytes (lo que admite bcrypt)."""
+    return (8 <= len(c) and len(c.encode()) <= MAX_BYTES_CONTRASENA
+            and any(x.isupper() for x in c) and any(x.islower() for x in c) and any(x.isdigit() for x in c))
 
 
 class UsuarioCreate(BaseModel):
