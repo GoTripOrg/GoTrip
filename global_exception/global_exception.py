@@ -151,6 +151,8 @@ class GlobalException:
 
         @app.exception_handler(StarletteHTTPException)
         async def _http(_: Request, exc: StarletteHTTPException):
+            if exc.status_code == 400:  # FastAPI no pudo leer el cuerpo (p. ej. bytes que no son UTF-8 válido)
+                return cls.respuesta(MSG_JSON, 400)
             if exc.status_code == 404:
                 return cls.respuesta("El recurso solicitado no existe", 404)
             if exc.status_code == 405:
