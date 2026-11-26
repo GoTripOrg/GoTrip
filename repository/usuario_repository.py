@@ -44,9 +44,23 @@ class UsuarioRepository:
         return next((u for u in self._datos
                      if u.id_tipo_documento == id_tipo_documento and u.numero_documento == numero), None)
 
+    def existe_con_rol(self, rol: str) -> bool:
+        return any(rol in u.roles_internos for u in self._datos)
+
     def crear(self, **campos) -> Usuario:
         with self._lock:
             nuevo = Usuario(id_usuario=self._siguiente_id, **campos)
+            self._datos.append(nuevo)
+            self._siguiente_id += 1
+            return nuevo
+
+    def crear_si_no_existe_rol(self, rol: str, **campos) -> Optional[Usuario]:
+        """Crea el usuario con ese rol solo si ningún otro lo tiene, en una sola operación
+        (como una restricción de unicidad en la base de datos). None si ya existe."""
+        with self._lock:
+            if self.existe_con_rol(rol):
+                return None
+            nuevo = Usuario(id_usuario=self._siguiente_id, roles_internos=[rol], **campos)
             self._datos.append(nuevo)
             self._siguiente_id += 1
             return nuevo
