@@ -118,6 +118,83 @@ class RespuestaRegistro(BaseModel):
     success: bool
 
 
+# ── HU-165: cuenta administradora inicial ────────────────────────────────────
+ROL_ADMINISTRADOR = "Administrador"
+
+
+def _texto_obligatorio(v: str) -> str:
+    if not v.strip():
+        raise ValueError(MSG_OBLIGATORIOS)
+    return v.strip()
+
+
+def _correo_valido(v: str) -> str:
+    v = v.strip().lower()
+    if not v:
+        raise ValueError(MSG_OBLIGATORIOS)
+    if re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]{2,}", v) is None:
+        raise ValueError(MSG_CORREO)
+    return v
+
+
+class AdministradorInicialCreate(BaseModel):
+    """Cuerpo de POST /api/v1/administrador-inicial. Sin modo de uso ni rol: el sistema asigna el rol Administrador."""
+    model_config = ConfigDict(extra="forbid")
+
+    nombres: StrictStr = Field(..., max_length=100)
+    apellidos: StrictStr = Field(..., max_length=100)
+    correo: StrictStr = Field(..., max_length=150)
+    id_tipo_documento: StrictInt = Field(..., description="Debe existir en el catálogo (HU-006)")
+    numero_documento: StrictStr = Field(..., max_length=30)
+    telefono: StrictStr = Field(..., max_length=20, description="Solo dígitos, con indicativo opcional")
+    contrasena: StrictStr = Field(..., max_length=128, description="Mínimo 8 caracteres, con mayúscula, minúscula y número")
+
+    @field_validator("nombres", "apellidos", "numero_documento")
+    @classmethod
+    def _no_vacio(cls, v):
+        return _texto_obligatorio(v)
+
+    @field_validator("correo")
+    @classmethod
+    def _correo(cls, v):
+        return _correo_valido(v)
+
+    @field_validator("telefono")
+    @classmethod
+    def _telefono(cls, v):
+        v = _texto_obligatorio(v)
+        if re.fullmatch(r"\+?[0-9]{7,15}", v) is None:
+            raise ValueError(MSG_TIPO)  # la HU no define mensaje propio para el teléfono
+        return v
+
+    @field_validator("contrasena")
+    @classmethod
+    def _clave(cls, v):
+        if not v.strip():
+            raise ValueError(MSG_OBLIGATORIOS)
+        if not politica_contrasena(v):
+            raise ValueError(MSG_CLAVE)
+        return v
+
+
+class AdministradorResponse(BaseModel):
+    """Datos de la cuenta administradora (nunca la contraseña)."""
+    id_usuario: int
+    nombres: str
+    apellidos: str
+    correo: str
+    rol: str
+    estado: str
+    fecha_creacion: str
+
+
+class RespuestaAdministrador(BaseModel):
+    """Envoltorio de la respuesta exitosa de HU-165."""
+    mensaje: str
+    data: AdministradorResponse
+    success: bool
+
+
 class Usuario:
     def __init__(self, id_usuario: int, nombres: str, apellidos: str, correo: str, id_tipo_documento: int,
                  numero_documento: str, telefono: str, hash_contrasena: str, modo_uso: Optional[str],
@@ -142,6 +219,15 @@ class Usuario:
 
     def tiene_rol_interno(self) -> bool:
         return bool(self.roles_internos)
+
+    def es_administrador(self) -> bool:
+        return ROL_ADMINISTRADOR in self.roles_internos
+
+    def to_response_administrador(self) -> dict:
+        """HU-165: datos básicos de la cuenta administradora."""
+        return {"id_usuario": self.id_usuario, "nombres": self.nombres, "apellidos": self.apellidos,
+                "correo": self.correo, "rol": ROL_ADMINISTRADOR, "estado": self.estado,
+                "fecha_creacion": iso(self.fecha_creacion)}
 
     def to_response(self) -> dict:
         return {"id_usuario": self.id_usuario, "nombres": self.nombres, "apellidos": self.apellidos,
