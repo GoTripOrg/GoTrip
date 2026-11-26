@@ -12,7 +12,7 @@ from fastapi import FastAPI  # noqa: E402
 from global_exception import GlobalException  # noqa: E402
 from api.auth_api import router as auth_router  # noqa: E402
 from api.tipo_documento_api import router as tipo_documento_router  # noqa: E402
-from api.usuario_api import router as usuario_router  # noqa: E402
+from api.usuario_api import router as usuario_router, router_administrador  # noqa: E402
 
 app = FastAPI(
     title="GoTrip – Servicios web (MVP)",
@@ -27,6 +27,7 @@ GlobalException.registrar(app)
 app.include_router(tipo_documento_router, prefix="/api/v1")
 app.include_router(usuario_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(router_administrador, prefix="/api/v1")
 
 
 # Ruta raíz — bienvenida
