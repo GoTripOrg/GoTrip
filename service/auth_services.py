@@ -16,6 +16,7 @@ MSG_BLOQUEO = ("Demasiados intentos fallidos. El inicio de sesión está bloquea
 MSG_INACTIVA = "La cuenta está inactiva y no puede iniciar sesión"
 MSG_MODO_NO_ACTIVO = "El modo de uso elegido no está activado en su cuenta"
 MSG_SESION_INVALIDA = "La sesión no es válida o ha expirado. Inicie sesión nuevamente"
+MSG_LOGOUT = "Sesión cerrada correctamente"
 
 
 class AuthService:
@@ -82,3 +83,10 @@ class AuthService:
         if usuario is None or not usuario.esta_activo() or str(usuario.id_usuario) != datos["sub"]:
             raise NoAutenticado(MSG_SESION_INVALIDA)
         return usuario
+
+    def cerrar_sesion(self, token: Optional[str]) -> None:
+        """HU-024: invalida el token de la sesión y registra el cierre con fecha y hora.
+        Después, cualquier petición con ese token responde 401."""
+        self.usuario_de_token(token)  # sin token, inválido, vencido o ya cerrado → 401
+        if not self.repo_auth.cerrar_sesion(decodificar_token(token)["jti"], ahora()):  # cerrada al mismo tiempo
+            raise NoAutenticado(MSG_SESION_INVALIDA)

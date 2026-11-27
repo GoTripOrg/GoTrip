@@ -88,3 +88,10 @@ class ControlIntentos:
         """Reinicia el contador de fallos; el número de bloqueos se conserva para que el siguiente sea más largo."""
         self.fallos = 0
         self.bloqueado_hasta = None
+
+
+class RespuestaLogout(BaseModel):
+    """Envoltorio de la respuesta exitosa de HU-024 (`data` siempre es null)."""
+    mensaje: str
+    data: None = None
+    success: bool

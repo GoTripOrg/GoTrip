@@ -14,7 +14,7 @@ class AuthRepository:
     def reiniciar(self):
         self._intentos: list = []     # registro de cada intento (nunca guarda la contraseña)
         self._controles: dict = {}    # correo -> ControlIntentos
-        self._sesiones: dict = {}     # jti -> datos de la sesión (HU-024 la invalidará)
+        self._sesiones: dict = {}     # jti -> datos de la sesión; HU-024 la cierra (activa = False)
 
     def control(self, correo: str) -> ControlIntentos:
         with self._lock:
@@ -36,6 +36,16 @@ class AuthRepository:
 
     def obtener_sesion(self, jti: str) -> Optional[dict]:
         return self._sesiones.get(jti)
+
+    def cerrar_sesion(self, jti: str, fecha: datetime) -> bool:
+        """Invalida la sesión del token (lista de tokens revocados) y guarda la fecha y hora del cierre."""
+        with self._lock:
+            sesion = self._sesiones.get(jti)
+            if not sesion or not sesion["activa"]:
+                return False
+            sesion["activa"] = False
+            sesion["cerrada_en"] = fecha
+            return True
 
 
 auth_repository = AuthRepository()
