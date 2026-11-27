@@ -1,6 +1,9 @@
 """Capa API: autenticación. Solo recibe la petición, llama al servicio y devuelve la respuesta.
 Los errores los atiende GlobalException (carpeta global_exception)."""
+from typing import Optional
+
 from fastapi import APIRouter, Body, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from domain.auth_domain import MSG_CREDENCIALES_FALTAN, LoginRequest, RespuestaLogin
 from domain.usuario_domain import MSG_MODO
@@ -78,3 +81,12 @@ def iniciar_sesion(datos: LoginRequest = Body(..., openapi_examples=EJEMPLOS)):
     esté habilitado. Entrega un token de acceso de 24 horas. Tras 3 intentos fallidos seguidos con el
     mismo correo, el inicio de sesión se bloquea temporalmente (5, 15, 30 y 60 minutos)."""
     return RespuestaLogin(mensaje=MSG_EXITO, data=service.iniciar_sesion(datos), success=True)
+
+
+# ── Sesión para los endpoints protegidos (botón «Authorize» de Swagger) ─────
+bearer = HTTPBearer(auto_error=False, description="Pegue el `token_acceso` que entrega POST /api/v1/auth/login.")
+
+
+def usuario_autenticado(credenciales: Optional[HTTPAuthorizationCredentials] = Depends(bearer)):
+    """Dependencia: usuario de la sesión del token Bearer; si no es válida responde 401."""
+    return service.usuario_de_token(credenciales.credentials if credenciales else None)
