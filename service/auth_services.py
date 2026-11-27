@@ -1,10 +1,13 @@
 """Servicio de autenticación: orquesta dominio + repositorios. No conoce HTTP ni FastAPI."""
+from typing import Optional
+
 from domain.auth_domain import LoginRequest
 from domain.usuario_domain import MSG_MODO, ahora
 from global_exception import DemasiadosIntentos, Invalido, NoAutenticado, SinPermiso
 from repository.auth_repository import AuthRepository
 from repository.usuario_repository import UsuarioRepository
-from service.seguridad import DURACION_TOKEN_SEG, MAX_INTENTOS_LOGIN, crear_token, verificar_contrasena
+from service.seguridad import (DURACION_TOKEN_SEG, MAX_INTENTOS_LOGIN, crear_token, decodificar_token,
+                               verificar_contrasena)
 
 MSG_EXITO = "Inicio de sesión exitoso"
 MSG_CREDENCIALES = "Correo o contraseña incorrectos"
@@ -12,6 +15,7 @@ MSG_BLOQUEO = ("Demasiados intentos fallidos. El inicio de sesión está bloquea
                "intente de nuevo más tarde")
 MSG_INACTIVA = "La cuenta está inactiva y no puede iniciar sesión"
 MSG_MODO_NO_ACTIVO = "El modo de uso elegido no está activado en su cuenta"
+MSG_SESION_INVALIDA = "La sesión no es válida o ha expirado. Inicie sesión nuevamente"
 
 
 class AuthService:
@@ -66,3 +70,15 @@ class AuthService:
                 "roles_internos": list(usuario.roles_internos),
             },
         }
+
+    def usuario_de_token(self, token: Optional[str]):
+        """Endpoints protegidos: devuelve el usuario de una sesión válida. Sin token, con token inválido,
+        alterado, vencido o de una sesión cerrada (o de una cuenta que ya no está activa) responde 401."""
+        datos = decodificar_token(token) if token else None
+        sesion = self.repo_auth.obtener_sesion(datos["jti"]) if datos else None
+        if not sesion or not sesion["activa"]:
+            raise NoAutenticado(MSG_SESION_INVALIDA)
+        usuario = self.repo_usuarios.obtener_por_id(sesion["id_usuario"])
+        if usuario is None or not usuario.esta_activo() or str(usuario.id_usuario) != datos["sub"]:
+            raise NoAutenticado(MSG_SESION_INVALIDA)
+        return usuario
