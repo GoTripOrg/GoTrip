@@ -45,3 +45,11 @@ def crear_token(id_usuario: int, modo_activo: Optional[str], roles_internos: lis
     datos = {"sub": str(id_usuario), "jti": jti, "iat": emitido, "exp": vence,
              "modo": modo_activo, "roles": roles_internos}
     return jwt.encode(datos, _clave(), algorithm=ALGORITMO), jti, vence
+
+
+def decodificar_token(token: str) -> Optional[dict]:
+    """Datos del token si la firma es válida y no ha vencido; None si es inválido, alterado o vencido."""
+    try:
+        return jwt.decode(token, _clave(), algorithms=[ALGORITMO], options={"require": ["exp", "sub", "jti"]})
+    except jwt.PyJWTError:
+        return None
