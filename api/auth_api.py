@@ -5,12 +5,12 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from domain.auth_domain import MSG_CREDENCIALES_FALTAN, LoginRequest, RespuestaLogin
+from domain.auth_domain import MSG_CREDENCIALES_FALTAN, LoginRequest, RespuestaLogin, RespuestaLogout
 from domain.usuario_domain import MSG_MODO
-from global_exception import GlobalException
+from global_exception import MSG_500, GlobalException
 from repository.auth_repository import auth_repository
 from repository.usuario_repository import usuario_repository
-from service.auth_services import MSG_EXITO, AuthService
+from service.auth_services import MSG_EXITO, MSG_LOGOUT, MSG_SESION_INVALIDA, AuthService
 
 router = APIRouter(prefix="/auth", tags=["MOD-04 · Usuarios y acceso"])
 service = AuthService(repo_usuarios=usuario_repository, repo_auth=auth_repository)
@@ -90,3 +90,29 @@ bearer = HTTPBearer(auto_error=False, description="Pegue el `token_acceso` que e
 def usuario_autenticado(credenciales: Optional[HTTPAuthorizationCredentials] = Depends(bearer)):
     """Dependencia: usuario de la sesión del token Bearer; si no es válida responde 401."""
     return service.usuario_de_token(credenciales.credentials if credenciales else None)
+
+
+# ── HU-024 · Cerrar sesión ───────────────────────────────────────────────────
+MSG_503_LOGOUT = "No fue posible cerrar la sesión. Intente de nuevo más tarde"
+RESPUESTAS_LOGOUT = {
+    200: {"description": "Caso 1 · Cierre de sesión exitoso.",
+          "content": {"application/json": {"example": {"mensaje": MSG_LOGOUT, "data": None, "success": True}}}},
+    401: {"description": "Casos 2, 3 y 4 · Sin token, o token inválido, vencido o ya cerrado.",
+          "content": {"application/json": {"example": {"mensaje": MSG_SESION_INVALIDA, "data": None,
+                                                       "success": False}}}},
+    503: {"description": "Caso 5 · Falla de base de datos (X-Simular-Falla = bd).",
+          "content": {"application/json": {"example": {"mensaje": MSG_503_LOGOUT, "data": None, "success": False}}}},
+    500: {"description": "Caso 6 · Error inesperado del servidor (X-Simular-Falla = error).",
+          "content": {"application/json": {"example": {"mensaje": MSG_500, "data": None, "success": False}}}},
+}
+
+
+@router.post(
+    "/logout", status_code=200, response_model=RespuestaLogout, summary="HU-024 · Cerrar sesión",
+    responses=RESPUESTAS_LOGOUT, dependencies=[Depends(GlobalException.simular_falla(MSG_503_LOGOUT))],
+)
+def cerrar_sesion(credenciales: Optional[HTTPAuthorizationCredentials] = Depends(bearer)):
+    """Requiere **token de acceso** (botón *Authorize*); no recibe cuerpo. Invalida el token y registra el
+    cierre con fecha y hora: desde ese momento cualquier petición con ese token responde 401."""
+    service.cerrar_sesion(credenciales.credentials if credenciales else None)
+    return RespuestaLogout(mensaje=MSG_LOGOUT, data=None, success=True)
