@@ -14,6 +14,7 @@ from api.auth_api import router as auth_router  # noqa: E402
 from api.tipo_documento_api import router as tipo_documento_router  # noqa: E402
 from api.usuario_api import router as usuario_router, router_administrador  # noqa: E402
 from api.parametro_api import router as parametro_router  # noqa: E402
+from api.rol_api import router as rol_router  # noqa: E402
 
 app = FastAPI(
     title="GoTrip – Servicios web (MVP)",
@@ -30,6 +31,7 @@ app.include_router(usuario_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(router_administrador, prefix="/api/v1")
 app.include_router(parametro_router, prefix="/api/v1")
+app.include_router(rol_router, prefix="/api/v1")
 
 
 # Ruta raíz — bienvenida
